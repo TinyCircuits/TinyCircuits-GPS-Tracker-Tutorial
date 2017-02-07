@@ -70,7 +70,7 @@ void setup()
   
   Serial.println("Send 'y' to start read mode. Write mode will begin in 10 seconds...");
   Serial.println();
-  while(millis() < 7000) {
+  while(millis() < 10000) {
     if(Serial.available()) {
       if(Serial.read() == 'y') {
         readFlash(address);
