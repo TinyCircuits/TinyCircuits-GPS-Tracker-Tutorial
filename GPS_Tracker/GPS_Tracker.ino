@@ -168,8 +168,7 @@ void logNMEA(uint8_t type) {
   buffer[c + 1] = (checksum >> 4) + (((checksum >> 4) < 10) ? '0' : ('A' - 10));
   buffer[c + 2] = (checksum & 0xF) + (((checksum & 0xF) < 10) ? '0' : ('A' - 10));
 
-  // Writes buffer array to flash memory. Buffer must be size 82, and all indices
-  // must contain initialized data to ensure proper writing of data.
+  // Writes buffer array to flash memory. Write length is variable to maximize memory.
   flash.writeCharArray(address, (char *)buffer, strlen((char *)buffer));
   address += 82; // Sets address 82 bytes ahead.
 }
