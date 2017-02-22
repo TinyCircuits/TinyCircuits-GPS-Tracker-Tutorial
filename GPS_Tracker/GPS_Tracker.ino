@@ -1,13 +1,12 @@
 //-------------------------------------------------------------------------------
 //  TinyCircuits GPS Tracker Tutorial Program
-//  Last updated 26 January 2016
+//  Last updated 22 February 2017 (1.01)
 //  
 //  Using the GPS TinyShield, the Flash Memory TinyShield, and the TinyDuino,
 //  this program turns the stack into a miniature GPS tracker and data logger.
-//  Note that only *one* type of NMEA sentence is selected for output. We strongly
-//  recommend that you keep this configuration, as it will reduce the number of
-//  writes performed and extend the battery life of your device. This is also the
-//  reason for writing one NMEA sentence per 10 seconds, which can be modified.
+//  The code detects which sentence is being read and formats the string accordingly.
+//  In order to reduce the number of writes, we write one NMEA sentence per 10 seconds, 
+//  which can be modified.
 //
 //  With the Telit SE868 V2 module with Glonass support, some messages come through
 //  as GN** sentences instead of GP**. These are changed back to GP** before logging
@@ -50,7 +49,7 @@ SoftwareSerial Gps_serial(GPS_RXPin, GPS_TXPin);
 
 // Set which sentences should be enabled on the GPS module
 // GPGGA - 
-char nmea[] = {'1'/*GPGGA*/, '0'/*GNGLL*/, '0'/*GNGSA*/, '0'/*GPGSV/GLGSV*/, '0'/*GNRMC*/, '0'/*GNVTG*/, '0'/*not supported*/, '0'/*GNGNS*/};
+char nmea[] = {'1'/*GPGGA*/, '0'/*GNGLL*/, '0'/*GNGSA*/, '0'/*GPGSV/GLGSV*/, '1'/*GNRMC*/, '0'/*GNVTG*/, '0'/*not supported*/, '0'/*GNGNS*/};
 
 void setup()
 {
@@ -63,14 +62,25 @@ void setup()
   flash.begin(); // Boots the flash memory
 
   Serial.println("Determining write/read start point...");
-  // Checks flash memory for the first logical 1 (0xFF)
-  while(flash.readByte(address) != 0xFF) {
-    address++;
+  uint8_t flashBuffer[256];
+  uint8_t foundStart = false;
+  while (!foundStart) {
+    flash.readByteArray(address, flashBuffer, 256);
+    int i;
+    for (i = 0; !foundStart && i < 256; i++) {
+      if (flashBuffer[i] == 0xFF) // checks for the first logical 1
+        foundStart = true;
+    }
+    address += i;
   }
-  
+  address--;
+  Serial.println("Done.")
+  Serial.println();
+
+  unsigned long timer = millis()
   Serial.println("Send 'y' to start read mode. Write mode will begin in 10 seconds...");
   Serial.println();
-  while(millis() < 10000) {
+  while(millis() < timer + 10000) {
     if(Serial.available()) {
       if(Serial.read() == 'y') {
         readFlash(address);
@@ -118,13 +128,23 @@ void setup()
 
 void loop() {
   unsigned long startTime = millis();
-  while (Gps_serial.read() != '$');
-  while (!Gps_serial.available());
-  if(nmea[4] == '1') { // GPRMC
-      logNMEA(1);
-  } else if (nmea[0] == '1') { // GPGGA
-      logNMEA(2);
+  while (Gps_Serial.read() != '$') {
+    //do other stuff here
   }
+  while (Gps_Serial.available() < 5);
+  Gps_Serial.read(); 
+  Gps_Serial.read(); //skip two characters
+  char c = Gps_Serial.read();
+  //determine senetence type
+  if (c == 'R' || c == 'G') {
+    c = Gps_Serial.read();
+    if (c == 'M') {
+      logNMEA(1);
+    } else if (c == 'G') {
+      logNMEA(2);
+    }
+  }
+  
   // Waits 10 seconds before reading next NMEA string
   while (millis() - startTime < 10000) {
     Gps_serial.read(); // clears GPS serial buffer
@@ -138,29 +158,29 @@ void logNMEA(uint8_t type) {
     buffer[i] = '\0';
   }
 
-  // Writes NMEA string to buffer
+    // Writes NMEA string to buffer
   buffer[0] = '$';
   int counter = 1;
   char c = 0;
-  while (!Gps_serial.available());
-  c = Gps_serial.read();
+  while (!Gps_Serial.available());
+  c = Gps_Serial.read();
   while (c != '*') {
     buffer[counter++] = c;
-    while (!Gps_serial.available());
-    c = Gps_serial.read();
+    while (!Gps_Serial.available());
+    c = Gps_Serial.read();
   }
   buffer[counter++] = c;
-  while (!Gps_serial.available());
-  c = Gps_serial.read();
+  while (!Gps_Serial.available());
+  c = Gps_Serial.read();
   buffer[counter++] = c;
-  while (!Gps_serial.available());
-  c = Gps_serial.read();
+  while (!Gps_Serial.available());
+  c = Gps_Serial.read();
   buffer[counter++] = c;
   buffer[counter++] = '\r';
   buffer[counter++] = '\n';
 
   buffer[2] = 'P'; // Changes GNRMC to GPRMC
-  
+
   c = 1;
   byte checksum = buffer[c++];
   while (buffer[c] != '*')
@@ -170,7 +190,7 @@ void logNMEA(uint8_t type) {
 
   // Writes buffer array to flash memory. Write length is variable to maximize memory.
   flash.writeCharArray(address, (char *)buffer, strlen((char *)buffer));
-  address += 82; // Sets address 82 bytes ahead.
+  address += strlen((char *)buffer); // Sets address ahead for length of the nmea string
 }
 
 void readFlash(unsigned long address) {
