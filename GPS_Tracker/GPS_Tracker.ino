@@ -1,6 +1,6 @@
 //-------------------------------------------------------------------------------
 //  TinyCircuits GPS Tracker Tutorial Program
-//  Last updated 22 February 2017 (1.01)
+//  Last updated 27 February 2017 (1.02)
 //  
 //  Using the GPS TinyShield, the Flash Memory TinyShield, and the TinyDuino,
 //  this program turns the stack into a miniature GPS tracker and data logger.
@@ -45,7 +45,7 @@ const uint8_t GPS_TXPin = A0;
 const uint8_t chipSelect = 10;
 
 // The GPS connection is attached with a software serial port
-SoftwareSerial Gps_serial(GPS_RXPin, GPS_TXPin);
+SoftwareSerial Gps_Serial(GPS_RXPin, GPS_TXPin);
 
 // Set which sentences should be enabled on the GPS module
 // GPGGA - 
@@ -53,7 +53,7 @@ char nmea[] = {'1'/*GPGGA*/, '0'/*GNGLL*/, '0'/*GNGSA*/, '0'/*GPGSV/GLGSV*/, '1'
 
 void setup()
 {
-  Gps_serial.begin(GPSBaud);
+  Gps_Serial.begin(GPSBaud);
   Serial.begin(115200);
 
   Serial.println("Initializing Flash Memory...");
@@ -74,10 +74,10 @@ void setup()
     address += i;
   }
   address--;
-  Serial.println("Done.")
+  Serial.println("Done.");
   Serial.println();
 
-  unsigned long timer = millis()
+  unsigned long timer = millis();
   Serial.println("Send 'y' to start read mode. Write mode will begin in 10 seconds...");
   Serial.println();
   while(millis() < timer + 10000) {
@@ -118,7 +118,7 @@ void setup()
       checksum ^= command[c++];
     command[c + 1] = (checksum >> 4) + (((checksum >> 4) < 10) ? '0' : ('A' - 10));
     command[c + 2] = (checksum & 0xF) + (((checksum & 0xF) < 10) ? '0' : ('A' - 10));
-    Gps_serial.print(command);
+    Gps_Serial.print(command);
     delay(20);
   }
   
@@ -147,7 +147,7 @@ void loop() {
   
   // Waits 10 seconds before reading next NMEA string
   while (millis() - startTime < 10000) {
-    Gps_serial.read(); // clears GPS serial buffer
+    Gps_Serial.read(); // clears GPS serial buffer
   }
 }
 
